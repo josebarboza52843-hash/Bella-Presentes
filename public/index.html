@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Presentes personalizados feitos com carinho para transformar momentos em memórias.">
+  <title>Bella Presentes Personalizados</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Sacramento&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect rx='16' width='64' height='64' fill='%23d85f86'/%3E%3Cpath d='M32 49S13 38 13 23c0-10 13-14 19-5 6-9 19-5 19 5 0 15-19 26-19 26z' fill='%23f7d98b'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="topbar">
+    <span>🚚 Frete para todo o Brasil</span><span>🛡 Compra 100% segura</span><span class="top-spacer"></span><span>◉ Atendimento</span><span>♟ Minha conta</span><span>▣ Meus pedidos</span>
+  </div>
+  <header class="header">
+    <a class="brand" href="#inicio" aria-label="Bella Presentes - início">
+      <span class="brand-gifts">🎁</span>
+      <span><strong>Bella <i>Presentes</i></strong><small>Personalizados</small></span>
+    </a>
+    <form class="search" id="searchForm" role="search">
+      <span class="search-icon" aria-hidden="true">⌕</span>
+      <input id="searchInput" type="search" placeholder="Buscar canecas, cestas, perfumes..." aria-label="Buscar produtos" autocomplete="off">
+      <button class="clear-search" id="clearSearch" type="button" aria-label="Limpar busca" hidden>×</button>
+      <button class="search-submit" type="submit">Buscar</button>
+    </form>
+    <div class="header-actions">
+      <button class="icon-btn" id="favoritesBtn" aria-label="Ver favoritos">♡ <small>Favoritos</small><span id="favoriteCount">0</span></button>
+      <button class="cart-btn" id="cartBtn" aria-label="Abrir carrinho">🛒 <small>Carrinho</small><span id="cartCount">0</span></button>
+      <button class="admin-link" id="adminLoginBtn">🔒 Entrar como administrador</button>
+      <button class="admin-link" id="adminBtn" hidden>⚙ Produtos</button>
+      <button class="admin-link payment-link" id="paymentBtn" hidden>◆ Pagamentos</button>
+      <button class="admin-link delivery-link" id="deliveryBtn" hidden>🚚 Entregas</button>
+      <button class="admin-link orders-link" id="ordersBtn" hidden>▤ Pedidos <span id="newOrdersCount" hidden>0</span></button>
+      <button class="admin-link" id="integrationsBtn" hidden>🔌 Integrações</button>
+      <button class="admin-link" id="accessBtn" hidden>♙ Acessos</button>
+      <button class="admin-link" id="adminLogoutBtn" hidden>Sair</button>
+      <p class="header-slogan">Presentes que<br>tornam momentos especiais ♥</p>
+    </div>
+  </header>
+  <nav class="nav" id="categoryNav" aria-label="Categorias">
+    <button data-category="Todos" class="active">⌂ &nbsp; Todos os Produtos</button><button data-category="Canecas">Canecas</button><button data-category="Kits">Kits Presentes</button><button data-category="Perfumes">Perfumes</button><button data-category="Datas especiais">Dia das Mães</button><button data-category="Datas especiais">Dia dos Namorados</button><button data-category="Decoração">Decoração</button><button data-category="Papelaria">Papelaria</button><button data-category="Infantil">Infantil</button>
+  </nav>
+
+  <main id="inicio">
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>Mais que presentes,<br><em>são sentimentos</em><br>em forma de carinho!</h1>
+        <div class="hero-mini"><span>♡ <b>Produtos<br>Personalizados</b></span><span>🚚 <b>Entrega<br>para todo o Brasil</b></span><span>♢ <b>Compra<br>100% Segura</b></span></div>
+        <a href="#produtos" class="primary-btn">Ver Produtos ›</a>
+      </div>
+      <div class="hero-art" aria-label="Presente personalizado elegante">
+        <img src="assets/kit-doce-carinho.webp" alt="Caixa rosa com presente personalizado e chocolates">
+        <div class="hero-tag">Detalhes<br>que fazem<br>a diferença ♡</div>
+      </div>
+    </section>
+
+    <section class="section categories-section">
+      <div class="category-grid">
+        <button data-category="Canecas"><span>☕</span><b>Canecas<br>Personalizadas</b></button>
+        <button data-category="Kits"><span>🎁</span><b>Kits Presente</b></button>
+        <button data-category="Datas especiais"><span>♥</span><b>Dia dos Namorados</b></button>
+        <button data-category="Datas especiais"><span>🌸</span><b>Dia das Mães</b></button>
+        <button data-category="Datas especiais"><span>🎂</span><b>Aniversário</b></button>
+        <button data-category="Decoração"><span>✦</span><b>Decoração</b></button>
+        <button data-category="Papelaria"><span>📔</span><b>Papelaria<br>Personalizada</b></button>
+        <button data-category="Infantil"><span>🧸</span><b>Infantil</b></button>
+        <button data-category="Todos"><span>🛍</span><b>Ver Todas</b></button>
+      </div>
+    </section>
+
+    <section class="section products-section" id="produtos">
+      <div class="section-title"><h2>♡ Produtos em Destaque</h2><p id="resultText">Escolha o presente perfeito para alguém especial!</p></div>
+      <div class="product-grid" id="productGrid"></div>
+    </section>
+    <section class="benefits" aria-label="Benefícios">
+      <div><b>🚚</b><span><strong>Frete para todo o Brasil</strong></span></div>
+      <div><b>♢</b><span><strong>Compra 100% segura</strong></span></div>
+      <div><b>▣</b><span><strong>Parcele suas compras em até 12x</strong></span></div>
+      <div><b>🎁</b><span><strong>Produtos personalizados</strong></span></div>
+      <div><b>◉</b><span><strong>Atendimento via WhatsApp</strong></span></div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-brand"><div class="brand"><span class="brand-gifts">🎁</span><span><strong>Bella <i>Presentes</i></strong><small>Personalizados</small></span></div><p>Presentes que tornam momentos especiais! ♡</p></div>
+    <div><h3>Atendimento</h3><a href="#">Fale conosco</a><a href="#">Prazos e entregas</a><a href="#">Trocas e devoluções</a></div>
+    <div><h3>Institucional</h3><a href="#">Quem somos</a><a href="#">Política de privacidade</a><a href="#">Termos de uso</a></div>
+    <div><h3>Siga a Bella</h3><a class="instagram-link" href="https://www.instagram.com/bellapresentes22" target="_blank" rel="noopener">◎ @bellapresentes22</a><p>Presentes que tornam momentos especiais! ♡</p></div>
+  </footer>
+
+  <div class="floating-socials" aria-label="Atendimento e redes sociais">
+    <a class="float-button instagram-float" href="https://www.instagram.com/bellapresentes22" target="_blank" rel="noopener" aria-label="Abrir Instagram da Bella Presentes">
+      <span class="float-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.4" cy="6.7" r="1.2" fill="currentColor"/></svg></span><span class="float-label">Instagram</span>
+    </a>
+    <a class="float-button whatsapp-float" href="https://wa.me/5547999182757?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20Bella%20Presentes%20e%20gostaria%20de%20atendimento." target="_blank" rel="noopener" aria-label="Falar com a Bella Presentes pelo WhatsApp">
+      <span class="float-icon" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path d="M20.5 11.7a8.4 8.4 0 0 1-12.4 7.4L3.5 20.5l1.4-4.4a8.4 8.4 0 1 1 15.6-4.4Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8.2 7.4c.3-.3.6-.3.8 0l1.1 2c.1.3.1.5-.1.7l-.8.8c.7 1.5 1.8 2.6 3.3 3.3l.8-.8c.2-.2.5-.2.7-.1l2 1.1c.3.2.3.5.1.8-.6 1-1.6 1.5-2.7 1.2-3.1-.8-6.1-3.8-6.9-6.9-.3-1.1.2-2.1 1.2-2.7Z" fill="currentColor"/></svg></span><span class="float-label">WhatsApp</span>
+    </a>
+  </div>
+
+  <aside class="drawer" id="cartDrawer" aria-hidden="true">
+    <div class="drawer-head"><h2>Sua sacola</h2><button id="closeCart" aria-label="Fechar carrinho">×</button></div>
+    <div id="cartItems" class="cart-items"></div>
+    <div class="cart-total"><span>Total</span><strong id="cartTotal">R$ 0,00</strong></div>
+    <div class="customer-fields">
+      <label>Seu nome<input id="customerName" maxlength="80" placeholder="Nome completo"></label>
+      <label>WhatsApp<input id="customerPhone" inputmode="tel" maxlength="16" placeholder="(47) 99999-9999"></label>
+    </div>
+    <label class="shipping-cep">CEP para entrega<input id="shippingCep" inputmode="numeric" maxlength="9" placeholder="00000-000"></label>
+    <button class="primary-btn checkout" id="checkoutBtn">Consultar frete pelo WhatsApp</button>
+  </aside>
+  <div class="overlay" id="overlay"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog class="admin-dialog" id="adminDialog">
+    <form method="dialog" class="admin-head"><div><small>PAINEL DA LOJA</small><h2>Gerenciar produtos</h2></div><button aria-label="Fechar">×</button></form>
+    <section class="category-manager">
+      <div><small>CATEGORIAS DO CATÁLOGO</small><h3>Adicionar categoria</h3></div>
+      <form id="categoryForm"><input id="newCategory" maxlength="35" required placeholder="Ex.: Cestas especiais"><button type="submit">+ Adicionar</button></form>
+      <div class="category-list" id="categoryList"></div>
+      <small class="category-help">Use as setas para organizar, o lápis para renomear e × para excluir.</small>
+    </section>
+    <form id="productForm" class="product-form">
+      <input type="hidden" id="productId">
+      <label>Nome do produto<input id="productName" required></label>
+      <label>Categoria<select id="productCategory"><option>Canecas</option><option>Kits</option><option>Perfumes</option><option>Datas especiais</option><option>Decoração</option><option>Papelaria</option><option>Infantil</option></select></label>
+      <label>Preço em reais <input id="productPrice" type="number" min="0" step="0.01" placeholder="Deixe vazio para consultar"></label>
+      <label>Quantidade em estoque<input id="productStock" type="number" min="0" step="1" value="0"></label>
+      <label class="active-product"><input id="productActive" type="checkbox" checked> Produto disponível na loja</label>
+      <label class="wide">Descrição<textarea id="productDesc" required rows="3"></textarea></label>
+      <fieldset class="shipping-dimensions wide"><legend>Dados para o futuro frete automático</legend><label>Peso (kg)<input id="productWeight" type="number" min="0.01" step="0.01" value="0.30"></label><label>Altura (cm)<input id="productHeight" type="number" min="1" step="0.1" value="10"></label><label>Largura (cm)<input id="productWidth" type="number" min="1" step="0.1" value="15"></label><label>Comprimento (cm)<input id="productLength" type="number" min="1" step="0.1" value="20"></label></fieldset>
+      <fieldset class="photo-field wide">
+        <legend>Foto do produto</legend>
+        <div class="photo-picker">
+          <div class="photo-preview" id="photoPreview"><span>📷</span><small>Nenhuma foto escolhida</small></div>
+          <div class="photo-options">
+            <label class="photo-button" for="cameraInput">📷 Tirar foto</label>
+            <input class="visually-hidden" id="cameraInput" type="file" accept="image/*" capture="environment">
+            <label class="photo-button secondary" for="fileInput">🖼 Escolher da galeria</label>
+            <input class="visually-hidden" id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif">
+            <button type="button" class="remove-photo" id="removePhoto">Remover foto</button>
+          </div>
+        </div>
+        <details><summary>Usar endereço de uma imagem</summary><input id="productImage" placeholder="Cole aqui o link da imagem"></details>
+        <small class="photo-help">A foto será ajustada automaticamente para o catálogo.</small>
+      </fieldset>
+      <div class="admin-actions wide"><button type="button" id="cancelEdit">Limpar</button><button type="submit" class="primary-btn">Salvar produto</button></div>
+    </form>
+    <div class="admin-list" id="adminList"></div>
+  </dialog>
+  <dialog class="admin-dialog payment-dialog" id="paymentDialog">
+    <form method="dialog" class="admin-head"><div><small>PAINEL FINANCEIRO</small><h2>Configurar pagamentos</h2></div><button aria-label="Fechar">×</button></form>
+    <section class="payment-manager">
+      <div><small>PIX</small><h3>Dados para recebimento</h3><p>Configure o PIX separadamente do cadastro de produtos.</p></div>
+      <form id="pixSettingsForm" class="pix-settings-form">
+        <label>Chave PIX<input id="pixKey" required placeholder="CPF, telefone, e-mail ou chave aleatória"></label>
+        <label>Nome do titular<input id="pixName" required maxlength="25" placeholder="Nome que aparece no PIX"></label>
+        <label>Cidade<input id="pixCity" required maxlength="15" placeholder="Ex.: Blumenau"></label>
+        <label class="wide">Mensagem após o pagamento<textarea id="pixMessage" rows="3" placeholder="Olá! Realizei o pagamento via PIX e gostaria de confirmar meu pedido."></textarea></label>
+        <button type="submit">Salvar configuração do PIX</button>
+      </form>
+      <div class="future-card"><span>💳</span><div><strong>Pagamento por cartão</strong><p>Área reservada para ativação futura do link de pagamento.</p></div><small>EM BREVE</small></div>
+    </section>
+  </dialog>
+  <dialog class="pix-dialog" id="pixDialog">
+    <form method="dialog" class="pix-dialog-head"><div><small>PAGAMENTO SEGURO</small><h2>Finalizar com PIX</h2></div><button aria-label="Fechar">×</button></form>
+    <div class="pix-dialog-body">
+      <div class="pix-total"><span>Total do pedido</span><strong id="pixTotal">R$ 0,00</strong></div>
+      <div id="pixUnavailable" class="pix-unavailable" hidden>O PIX ainda não foi configurado. Entre em contato pelo WhatsApp para concluir o pedido.</div>
+      <div id="pixReady">
+        <p>Copie o código abaixo, pague no aplicativo do seu banco e depois envie o pedido para o WhatsApp.</p>
+        <label>PIX copia e cola<textarea id="pixPayload" readonly rows="5"></textarea></label>
+        <button type="button" class="copy-pix" id="copyPixBtn">Copiar código PIX</button>
+      </div>
+      <button type="button" class="primary-btn whatsapp-order" id="paidWhatsappBtn">Já paguei — enviar pedido pelo WhatsApp</button>
+    </div>
+  </dialog>
+  <dialog class="admin-dialog access-dialog" id="accessDialog">
+    <form method="dialog" class="admin-head"><div><small>SEGURANÇA</small><h2>Gerenciar administradores</h2></div><button aria-label="Fechar">×</button></form>
+    <section class="access-manager">
+      <p>Autorize somente pessoas responsáveis por cadastrar produtos e configurar pagamentos.</p>
+      <form id="accessForm" class="access-form"><label>E-mail do novo administrador<input id="newAdminEmail" type="email" required placeholder="nome@exemplo.com"></label><button type="submit">Autorizar acesso</button></form>
+      <div class="access-list" id="accessList"></div>
+      <small>Mantenha sempre pelo menos um administrador autorizado.</small>
+    </section>
+  </dialog>
+  <dialog class="admin-dialog delivery-dialog" id="deliveryDialog">
+    <form method="dialog" class="admin-head"><div><small>CONFIGURAÇÃO</small><h2>Entregas e frete</h2></div><button aria-label="Fechar">×</button></form>
+    <section class="delivery-manager">
+      <div class="delivery-mode"><span>✓</span><div><strong>Consulta pelo WhatsApp</strong><p>O cliente informa o CEP e a Bella confirma preço e prazo.</p></div></div>
+      <form id="deliverySettingsForm" class="delivery-settings-form">
+        <label>Cidade de origem<input id="deliveryOriginCity" required value="Blumenau - SC"></label>
+        <label>CEP de origem <span>(opcional agora)</span><input id="deliveryOriginZip" inputmode="numeric" maxlength="9" placeholder="00000-000"></label>
+        <label class="wide">Mensagem da consulta<textarea id="deliveryMessage" rows="3"></textarea></label>
+        <button type="submit">Salvar configuração de entrega</button>
+      </form>
+      <div class="future-card"><span>⚙</span><div><strong>Cálculo automático</strong><p>Poderá ser ativado futuramente com o Melhor Envio.</p></div><small>PREPARADO</small></div>
+    </section>
+  </dialog>
+  <dialog class="admin-dialog orders-dialog" id="ordersDialog">
+    <form method="dialog" class="admin-head"><div><small>VENDAS</small><h2>Painel de pedidos</h2></div><button aria-label="Fechar">×</button></form>
+    <section class="orders-summary"><div><small>Pedidos</small><strong id="ordersTotalCount">0</strong></div><div><small>Novos</small><strong id="ordersNewCount">0</strong></div><div><small>Pagos</small><strong id="ordersPaidCount">0</strong></div><div><small>Total em vendas</small><strong id="ordersSalesTotal">R$ 0,00</strong></div></section>
+    <section class="orders-toolbar"><input id="orderSearch" placeholder="Buscar pedido, cliente ou telefone"><select id="orderFilter"><option value="todos">Todos os status</option><option value="novo">Novos</option><option value="aguardando_pagamento">Aguardando pagamento</option><option value="pago">Pagos</option><option value="preparando">Preparando</option><option value="enviado">Enviados</option><option value="entregue">Entregues</option><option value="cancelado">Cancelados</option></select><button type="button" id="refreshOrders">↻ Atualizar</button></section>
+    <div class="orders-list" id="ordersList"><p class="empty">Carregando pedidos…</p></div>
+  </dialog>
+  <dialog class="admin-dialog integrations-dialog" id="integrationsDialog">
+    <form method="dialog" class="admin-head"><div><small>CONEXÕES</small><h2>Integrações futuras</h2></div><button aria-label="Fechar">×</button></form>
+    <section class="integrations-list"><article><span>💳</span><div><h3>Mercado Pago</h3><p>Checkout para cartão, PIX e confirmação automática.</p><small>AGUARDANDO CREDENCIAIS</small></div></article><article><span>🚚</span><div><h3>Melhor Envio</h3><p>Cotação automática com peso, dimensões e CEP.</p><small>AGUARDANDO CREDENCIAIS</small></div></article><p class="credentials-note">As credenciais serão armazenadas de forma protegida no servidor e nunca no navegador ou no arquivo ZIP.</p></section>
+  </dialog>
+  <dialog class="pix-dialog" id="orderPixDialog"><form method="dialog" class="pix-dialog-head"><div><small>COBRANÇA</small><h2>PIX do pedido</h2></div><button aria-label="Fechar">×</button></form><div class="pix-dialog-body"><img class="pix-qr" id="orderPixQr" alt="QR Code PIX"><div class="pix-total"><span>Total</span><strong id="orderPixTotal">R$ 0,00</strong></div><label>PIX copia e cola<textarea id="orderPixPayload" readonly rows="5"></textarea></label><button type="button" class="copy-pix" id="copyOrderPix">Copiar código PIX</button><a class="primary-btn whatsapp-order" id="sendOrderPix" target="_blank" rel="noopener">Enviar cobrança pelo WhatsApp</a></div></dialog>
+  <script src="app.js"></script>
+</body>
+</html>
