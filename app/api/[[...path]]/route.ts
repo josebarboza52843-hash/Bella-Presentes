@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import QRCode from "qrcode";
 
 export const runtime = "edge";
 
@@ -25,6 +26,23 @@ async function ensureDatabase() {
     CREATE TABLE IF NOT EXISTS bella_catalog (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       data TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
+  await appEnv.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS bella_orders (
+      id TEXT PRIMARY KEY,
+      customer_name TEXT NOT NULL,
+      customer_phone TEXT NOT NULL,
+      destination_zip TEXT NOT NULL,
+      items_json TEXT NOT NULL,
+      subtotal REAL NOT NULL,
+      shipping_amount REAL,
+      total REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'novo',
+      payment_method TEXT NOT NULL DEFAULT 'A definir',
+      notes TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
@@ -121,6 +139,74 @@ function routePath(context: { params: Promise<{ path?: string[] }> }) {
   return context.params.then(({ path }) => (path ?? []).join("/"));
 }
 
+function orderId() {
+  const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  const suffix = crypto.randomUUID().slice(0, 6).toUpperCase();
+  return `BP-${date}-${suffix}`;
+}
+
+function emv(id: string, value: string) {
+  return `${id}${String(value.length).padStart(2, "0")}${value}`;
+}
+
+function crc16(text: string) {
+  let crc = 0xffff;
+  for (let i = 0; i < text.length; i++) {
+    crc ^= text.charCodeAt(i) << 8;
+    for (let j = 0; j < 8; j++) {
+      crc = crc & 0x8000 ? (crc << 1) ^ 0x1021 : crc << 1;
+      crc &= 0xffff;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, "0");
+}
+
+function pixText(value: unknown) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9 ]/g, "")
+    .trim()
+    .toUpperCase();
+}
+
+function buildPixPayload(key: string, name: string, city: string, total: number, reference: string) {
+  const merchant = emv("00", "BR.GOV.BCB.PIX") + emv("01", key.trim());
+  const referenceValue = pixText(reference).slice(0, 25) || "***";
+  const base =
+    emv("00", "01") +
+    emv("26", merchant) +
+    emv("52", "0000") +
+    emv("53", "986") +
+    emv("54", total.toFixed(2)) +
+    emv("58", "BR") +
+    emv("59", pixText(name).slice(0, 25)) +
+    emv("60", pixText(city).slice(0, 15)) +
+    emv("62", emv("05", referenceValue)) +
+    "6304";
+  return base + crc16(base);
+}
+
+async function listOrders(db: D1Database) {
+  const result = await db.prepare(`
+    SELECT id,
+      customer_name AS customerName,
+      customer_phone AS customerPhone,
+      destination_zip AS destinationZip,
+      items_json AS itemsJson,
+      subtotal,
+      shipping_amount AS shippingAmount,
+      total,
+      status,
+      payment_method AS paymentMethod,
+      notes,
+      created_at AS createdAt
+    FROM bella_orders
+    ORDER BY created_at DESC
+  `).all();
+  return result.results ?? [];
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ path?: string[] }> },
@@ -161,6 +247,12 @@ export async function GET(
     } catch {
       return json({ products: [], categories: [], pixSettings: {}, deliverySettings: null });
     }
+  }
+
+  if (path === "orders") {
+    if (!(await requireAdministrator(request))) return json({ error: "Não autorizado" }, 401);
+    const db = await ensureDatabase();
+    return json({ orders: await listOrders(db) });
   }
 
   if (path === "logout") {
@@ -229,6 +321,65 @@ export async function POST(
     return json({ administrators: (result.results ?? []).map((row) => row.email) });
   }
 
+  if (path === "orders") {
+    let body: {
+      customerName?: string;
+      customerPhone?: string;
+      destinationZip?: string;
+      items?: Array<{ id?: number; name?: string; quantity?: number; unitPrice?: number }>;
+      subtotal?: number;
+    };
+    try {
+      body = await request.json();
+    } catch {
+      return json({ error: "Dados do pedido inválidos" }, 400);
+    }
+    const customerName = body.customerName?.trim();
+    const customerPhone = body.customerPhone?.replace(/\D/g, "") ?? "";
+    const destinationZip = body.destinationZip?.replace(/\D/g, "") ?? "";
+    const items = Array.isArray(body.items)
+      ? body.items.filter((item) => item.name && Number(item.quantity) > 0 && Number(item.unitPrice) >= 0)
+      : [];
+    if (!customerName || customerPhone.length < 10 || destinationZip.length !== 8 || !items.length) {
+      return json({ error: "Preencha corretamente os dados do pedido" }, 400);
+    }
+    const subtotal = Number(
+      items.reduce((sum, item) => sum + Number(item.quantity) * Number(item.unitPrice), 0).toFixed(2),
+    );
+    if (!Number.isFinite(subtotal) || subtotal < 0) return json({ error: "Valor inválido" }, 400);
+    const id = orderId();
+    const db = await ensureDatabase();
+    await db.prepare(`
+      INSERT INTO bella_orders
+        (id, customer_name, customer_phone, destination_zip, items_json, subtotal, total)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(id, customerName, customerPhone, destinationZip, JSON.stringify(items), subtotal, subtotal).run();
+    return json({ id, total: subtotal }, 201);
+  }
+
+  if (path === "pix") {
+    if (!(await requireAdministrator(request))) return json({ error: "Não autorizado" }, 401);
+    const body = (await request.json()) as { id?: string };
+    if (!body.id) return json({ error: "Pedido não informado" }, 400);
+    const db = await ensureDatabase();
+    const order = await db.prepare(`
+      SELECT id, customer_phone AS customerPhone, total
+      FROM bella_orders WHERE id = ?
+    `).bind(body.id).first<{ id: string; customerPhone: string; total: number }>();
+    if (!order) return json({ error: "Pedido não encontrado" }, 404);
+    const row = await db.prepare("SELECT data FROM bella_catalog WHERE id = 1").first<{ data: string }>();
+    let settings: { key?: string; name?: string; city?: string } = {};
+    try {
+      settings = row?.data ? JSON.parse(row.data).pixSettings ?? {} : {};
+    } catch {}
+    if (!settings.key || !settings.name || !settings.city) {
+      return json({ error: "Configure a chave PIX em Pagamentos" }, 400);
+    }
+    const payload = buildPixPayload(settings.key, settings.name, settings.city, Number(order.total), order.id);
+    const qr = await QRCode.toDataURL(payload, { width: 320, margin: 1, errorCorrectionLevel: "M" });
+    return json({ payload, qr, total: Number(order.total), customerPhone: order.customerPhone });
+  }
+
   if (path !== "admin/login") return json({ error: "Rota não encontrada" }, 404);
 
   const configuredEmail = appEnv.ADMIN_EMAIL?.trim().toLowerCase();
@@ -264,6 +415,14 @@ export async function DELETE(
   context: { params: Promise<{ path?: string[] }> },
 ) {
   const path = await routePath(context);
+  if (path === "orders") {
+    if (!(await requireAdministrator(request))) return json({ error: "Não autorizado" }, 401);
+    const body = (await request.json()) as { id?: string };
+    if (!body.id) return json({ error: "Pedido não informado" }, 400);
+    const db = await ensureDatabase();
+    await db.prepare("DELETE FROM bella_orders WHERE id = ?").bind(body.id).run();
+    return json({ ok: true });
+  }
   if (path !== "administrators") return json({ error: "Rota não encontrada" }, 404);
   const session = await requireAdministrator(request);
   if (!session) return json({ error: "Não autorizado" }, 401);
@@ -279,4 +438,46 @@ export async function DELETE(
     "SELECT email FROM bella_administrators ORDER BY created_at, email",
   ).all<{ email: string }>();
   return json({ administrators: (result.results ?? []).map((row) => row.email) });
+}
+
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ path?: string[] }> },
+) {
+  const path = await routePath(context);
+  if (path !== "orders") return json({ error: "Rota não encontrada" }, 404);
+  if (!(await requireAdministrator(request))) return json({ error: "Não autorizado" }, 401);
+  const body = (await request.json()) as {
+    id?: string;
+    status?: string;
+    shippingAmount?: number | null;
+    paymentMethod?: string;
+    notes?: string;
+  };
+  const statuses = ["novo", "aguardando_pagamento", "pago", "preparando", "enviado", "entregue", "cancelado"];
+  if (!body.id || !body.status || !statuses.includes(body.status)) {
+    return json({ error: "Dados do pedido inválidos" }, 400);
+  }
+  const shipping = body.shippingAmount == null ? null : Number(body.shippingAmount);
+  if (shipping != null && (!Number.isFinite(shipping) || shipping < 0)) {
+    return json({ error: "Frete inválido" }, 400);
+  }
+  const db = await ensureDatabase();
+  const current = await db.prepare("SELECT subtotal FROM bella_orders WHERE id = ?")
+    .bind(body.id).first<{ subtotal: number }>();
+  if (!current) return json({ error: "Pedido não encontrado" }, 404);
+  const total = Number((Number(current.subtotal) + (shipping ?? 0)).toFixed(2));
+  await db.prepare(`
+    UPDATE bella_orders
+    SET status = ?, shipping_amount = ?, total = ?, payment_method = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?
+  `).bind(
+    body.status,
+    shipping,
+    total,
+    String(body.paymentMethod ?? "A definir").slice(0, 40),
+    String(body.notes ?? "").slice(0, 2000),
+    body.id,
+  ).run();
+  return json({ ok: true, total });
 }
