@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers";
 export const runtime = "edge";
 
 type AppEnv = {
+  DB?: D1Database;
   ADMIN_EMAIL?: string;
   ADMIN_PASSWORD?: string;
   SESSION_SECRET?: string;
@@ -11,6 +12,37 @@ type AppEnv = {
 const COOKIE_NAME = "bella_admin_session";
 const SESSION_SECONDS = 8 * 60 * 60;
 const appEnv = env as unknown as AppEnv;
+
+async function ensureDatabase() {
+  if (!appEnv.DB) throw new Error("Banco D1 não conectado");
+  await appEnv.DB.exec(`
+    CREATE TABLE IF NOT EXISTS bella_administrators (
+      email TEXT PRIMARY KEY,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  const primaryEmail = appEnv.ADMIN_EMAIL?.trim().toLowerCase();
+  if (primaryEmail) {
+    await appEnv.DB.prepare(
+      "INSERT OR IGNORE INTO bella_administrators (email) VALUES (?)",
+    ).bind(primaryEmail).run();
+  }
+  return appEnv.DB;
+}
+
+async function isAdministrator(email: string) {
+  const db = await ensureDatabase();
+  const row = await db.prepare(
+    "SELECT email FROM bella_administrators WHERE email = ?",
+  ).bind(email.trim().toLowerCase()).first();
+  return Boolean(row);
+}
+
+async function requireAdministrator(request: Request) {
+  const session = await readSession(request);
+  if (!session || !(await isAdministrator(session.email))) return null;
+  return session;
+}
 
 function json(data: unknown, status = 200, headers?: HeadersInit) {
   return Response.json(data, { status, headers });
@@ -90,13 +122,23 @@ export async function GET(
 
   if (path === "session") {
     const session = await readSession(request);
+    const admin = Boolean(session && (await isAdministrator(session.email)));
     return json({
       authenticated: Boolean(session),
-      admin: Boolean(session),
+      admin,
       email: session?.email ?? null,
       signIn: "/admin-login",
       signOut: "/api/logout",
     });
+  }
+
+  if (path === "administrators") {
+    if (!(await requireAdministrator(request))) return json({ error: "Não autorizado" }, 401);
+    const db = await ensureDatabase();
+    const result = await db.prepare(
+      "SELECT email FROM bella_administrators ORDER BY created_at, email",
+    ).all<{ email: string }>();
+    return json({ administrators: (result.results ?? []).map((row) => row.email) });
   }
 
   if (path === "logout") {
@@ -117,6 +159,22 @@ export async function POST(
   context: { params: Promise<{ path?: string[] }> },
 ) {
   const path = await routePath(context);
+
+  if (path === "administrators") {
+    if (!(await requireAdministrator(request))) return json({ error: "Não autorizado" }, 401);
+    const body = (await request.json()) as { email?: string };
+    const email = body.email?.trim().toLowerCase();
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) return json({ error: "E-mail inválido" }, 400);
+    const db = await ensureDatabase();
+    await db.prepare(
+      "INSERT OR IGNORE INTO bella_administrators (email) VALUES (?)",
+    ).bind(email).run();
+    const result = await db.prepare(
+      "SELECT email FROM bella_administrators ORDER BY created_at, email",
+    ).all<{ email: string }>();
+    return json({ administrators: (result.results ?? []).map((row) => row.email) });
+  }
+
   if (path !== "admin/login") return json({ error: "Rota não encontrada" }, 404);
 
   const configuredEmail = appEnv.ADMIN_EMAIL?.trim().toLowerCase();
@@ -133,7 +191,7 @@ export async function POST(
   }
 
   const email = credentials.email?.trim().toLowerCase();
-  if (email !== configuredEmail || credentials.password !== configuredPassword) {
+  if (!email || !(await isAdministrator(email)) || credentials.password !== configuredPassword) {
     return json({ error: "E-mail ou senha inválidos" }, 401);
   }
 
@@ -145,4 +203,26 @@ export async function POST(
       "Set-Cookie": `${COOKIE_NAME}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${SESSION_SECONDS}`,
     },
   );
+}
+
+export async function DELETE(
+  request: Request,
+  context: { params: Promise<{ path?: string[] }> },
+) {
+  const path = await routePath(context);
+  if (path !== "administrators") return json({ error: "Rota não encontrada" }, 404);
+  const session = await requireAdministrator(request);
+  if (!session) return json({ error: "Não autorizado" }, 401);
+  const body = (await request.json()) as { email?: string };
+  const email = body.email?.trim().toLowerCase();
+  const primaryEmail = appEnv.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!email) return json({ error: "E-mail inválido" }, 400);
+  if (email === primaryEmail) return json({ error: "O administrador principal não pode ser removido" }, 400);
+  if (email === session.email) return json({ error: "Você não pode remover o próprio acesso" }, 400);
+  const db = await ensureDatabase();
+  await db.prepare("DELETE FROM bella_administrators WHERE email = ?").bind(email).run();
+  const result = await db.prepare(
+    "SELECT email FROM bella_administrators ORDER BY created_at, email",
+  ).all<{ email: string }>();
+  return json({ administrators: (result.results ?? []).map((row) => row.email) });
 }
