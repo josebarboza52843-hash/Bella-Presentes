@@ -15,12 +15,12 @@ const appEnv = env as unknown as AppEnv;
 
 async function ensureDatabase() {
   if (!appEnv.DB) throw new Error("Banco D1 não conectado");
-  await appEnv.DB.exec(`
+  await appEnv.DB.prepare(`
     CREATE TABLE IF NOT EXISTS bella_administrators (
       email TEXT PRIMARY KEY,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+    )
+  `).run();
   const primaryEmail = appEnv.ADMIN_EMAIL?.trim().toLowerCase();
   if (primaryEmail) {
     await appEnv.DB.prepare(
@@ -195,7 +195,7 @@ export async function POST(
     return json({ error: "E-mail ou senha inválidos" }, 401);
   }
 
-  const token = await createSession(configuredEmail);
+  const token = await createSession(email);
   return json(
     { ok: true },
     200,
