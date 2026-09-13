@@ -21,6 +21,13 @@ async function ensureDatabase() {
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
   `).run();
+  await appEnv.DB.prepare(`
+    CREATE TABLE IF NOT EXISTS bella_catalog (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      data TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run();
   const primaryEmail = appEnv.ADMIN_EMAIL?.trim().toLowerCase();
   if (primaryEmail) {
     await appEnv.DB.prepare(
@@ -141,6 +148,21 @@ export async function GET(
     return json({ administrators: (result.results ?? []).map((row) => row.email) });
   }
 
+  if (path === "catalog") {
+    const db = await ensureDatabase();
+    const row = await db.prepare(
+      "SELECT data FROM bella_catalog WHERE id = 1",
+    ).first<{ data: string }>();
+    if (!row?.data) {
+      return json({ products: [], categories: [], pixSettings: {}, deliverySettings: null });
+    }
+    try {
+      return json(JSON.parse(row.data));
+    } catch {
+      return json({ products: [], categories: [], pixSettings: {}, deliverySettings: null });
+    }
+  }
+
   if (path === "logout") {
     return new Response(null, {
       status: 303,
@@ -152,6 +174,38 @@ export async function GET(
   }
 
   return json({ error: "Rota não encontrada" }, 404);
+}
+
+export async function PUT(
+  request: Request,
+  context: { params: Promise<{ path?: string[] }> },
+) {
+  const path = await routePath(context);
+  if (path !== "catalog") return json({ error: "Rota não encontrada" }, 404);
+  if (!(await requireAdministrator(request))) return json({ error: "Não autorizado" }, 401);
+
+  let catalog: {
+    products?: unknown[];
+    categories?: unknown[];
+    pixSettings?: Record<string, unknown>;
+    deliverySettings?: Record<string, unknown> | null;
+  };
+  try {
+    catalog = await request.json();
+  } catch {
+    return json({ error: "Dados inválidos" }, 400);
+  }
+  if (!Array.isArray(catalog.products) || !Array.isArray(catalog.categories)) {
+    return json({ error: "Catálogo inválido" }, 400);
+  }
+
+  const db = await ensureDatabase();
+  await db.prepare(`
+    INSERT INTO bella_catalog (id, data, updated_at)
+    VALUES (1, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = CURRENT_TIMESTAMP
+  `).bind(JSON.stringify(catalog)).run();
+  return json({ ok: true });
 }
 
 export async function POST(
