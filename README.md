@@ -1,5 +1,19 @@
 # vinext-starter
 
+## Bella Presentes v20 — publicação no Cloudflare
+
+Esta versão troca o login dependente do ChatGPT por uma sessão administrativa própria e cria automaticamente as tabelas do banco D1 na primeira utilização.
+
+Depois de publicar, abra o Worker no Cloudflare e cadastre estes três valores como **Secrets** em Settings/Bindings:
+
+- `ADMIN_EMAIL`: e-mail usado no formulário de login.
+- `ADMIN_PASSWORD`: senha forte com pelo menos 8 caracteres.
+- `SESSION_SECRET`: sequência aleatória longa, com no mínimo 32 caracteres.
+
+Não grave senhas diretamente nos arquivos do GitHub. O login administrativo permanece válido por até 8 horas e usa cookie seguro, HttpOnly e SameSite Strict.
+
+O banco deve continuar ligado ao binding `DB`. Não é necessário executar as migrações manualmente: as tabelas finais são criadas automaticamente pelas rotas da aplicação.
+
 A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
 
 ## Prerequisites
