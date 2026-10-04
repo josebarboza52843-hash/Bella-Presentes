@@ -8,6 +8,7 @@ type AppEnv = {
   ADMIN_EMAIL?: string;
   ADMIN_PASSWORD?: string;
   SESSION_SECRET?: string;
+  MERCADO_PAGO_ACCESS_TOKEN?: string;
 };
 
 const COOKIE_NAME = "bella_admin_session";
@@ -207,6 +208,25 @@ async function listOrders(db: D1Database) {
   return result.results ?? [];
 }
 
+async function mercadoPagoRequest(path: string, init?: RequestInit) {
+  const token = appEnv.MERCADO_PAGO_ACCESS_TOKEN?.trim();
+  if (!token) throw new Error("Mercado Pago ainda não foi ativado");
+  return fetch(`https://api.mercadopago.com${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+}
+
+function paymentOrderStatus(status: string) {
+  if (status === "approved") return "pago";
+  if (["rejected", "cancelled", "refunded", "charged_back"].includes(status)) return "cancelado";
+  return "aguardando_pagamento";
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ path?: string[] }> },
@@ -378,6 +398,133 @@ export async function POST(
     const payload = buildPixPayload(settings.key, settings.name, settings.city, Number(order.total), order.id);
     const qr = await QRCode.toDataURL(payload, { width: 320, margin: 1, errorCorrectionLevel: "M" });
     return json({ payload, qr, total: Number(order.total), customerPhone: order.customerPhone });
+  }
+
+  if (path === "mercadopago/checkout") {
+    if (!(await requireAdministrator(request))) return json({ error: "Não autorizado" }, 401);
+    if (!appEnv.MERCADO_PAGO_ACCESS_TOKEN?.trim()) {
+      return json({ error: "Mercado Pago ainda não foi ativado. Cadastre a credencial na hospedagem." }, 503);
+    }
+    const body = (await request.json()) as { id?: string };
+    if (!body.id) return json({ error: "Pedido não informado" }, 400);
+    const db = await ensureDatabase();
+    const order = await db.prepare(`
+      SELECT id, customer_name AS customerName, customer_phone AS customerPhone,
+        items_json AS itemsJson, subtotal, shipping_amount AS shippingAmount, total
+      FROM bella_orders WHERE id = ?
+    `).bind(body.id).first<{
+      id: string;
+      customerName: string;
+      customerPhone: string;
+      itemsJson: string;
+      subtotal: number;
+      shippingAmount: number | null;
+      total: number;
+    }>();
+    if (!order) return json({ error: "Pedido não encontrado" }, 404);
+    if (order.shippingAmount == null) {
+      return json({ error: "Informe e salve o valor do frete antes de gerar o pagamento" }, 400);
+    }
+    let items: Array<{ name?: string; quantity?: number; unitPrice?: number }> = [];
+    try {
+      items = JSON.parse(order.itemsJson);
+    } catch {
+      return json({ error: "Itens do pedido inválidos" }, 400);
+    }
+    const checkoutItems = items.map((item, index) => ({
+      id: `${order.id}-${index + 1}`,
+      title: String(item.name ?? "Produto Bella Presentes").slice(0, 120),
+      quantity: Math.max(1, Number(item.quantity) || 1),
+      currency_id: "BRL",
+      unit_price: Number(Number(item.unitPrice).toFixed(2)),
+    }));
+    if (Number(order.shippingAmount) > 0) {
+      checkoutItems.push({
+        id: `${order.id}-frete`,
+        title: "Frete",
+        quantity: 1,
+        currency_id: "BRL",
+        unit_price: Number(Number(order.shippingAmount).toFixed(2)),
+      });
+    }
+    const origin = new URL(request.url).origin;
+    const preferenceResponse = await mercadoPagoRequest("/checkout/preferences", {
+      method: "POST",
+      headers: { "X-Idempotency-Key": `bella-${order.id}-${Number(order.total).toFixed(2)}` },
+      body: JSON.stringify({
+        items: checkoutItems,
+        external_reference: order.id,
+        statement_descriptor: "BELLA PRESENTES",
+        back_urls: {
+          success: `${origin}/index.html?payment=approved&order=${encodeURIComponent(order.id)}`,
+          pending: `${origin}/index.html?payment=pending&order=${encodeURIComponent(order.id)}`,
+          failure: `${origin}/index.html?payment=failure&order=${encodeURIComponent(order.id)}`,
+        },
+        auto_return: "approved",
+        notification_url: `${origin}/api/mercadopago/webhook`,
+        metadata: { order_id: order.id },
+      }),
+    });
+    const preference = await preferenceResponse.json() as {
+      id?: string;
+      init_point?: string;
+      sandbox_init_point?: string;
+      message?: string;
+    };
+    if (!preferenceResponse.ok || !preference.init_point) {
+      return json({ error: preference.message || "Não foi possível criar o pagamento" }, 502);
+    }
+    await db.prepare(`
+      UPDATE bella_orders
+      SET status = 'aguardando_pagamento', payment_method = 'Mercado Pago', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(order.id).run();
+    return json({
+      id: preference.id,
+      url: preference.init_point,
+      orderId: order.id,
+      total: Number(order.total),
+      customerPhone: order.customerPhone,
+      customerName: order.customerName,
+    });
+  }
+
+  if (path === "mercadopago/webhook") {
+    if (!appEnv.MERCADO_PAGO_ACCESS_TOKEN?.trim()) return json({ ok: true });
+    let notification: { type?: string; action?: string; data?: { id?: string | number } } = {};
+    try {
+      notification = await request.json();
+    } catch {
+      return json({ ok: true });
+    }
+    const paymentId = notification.data?.id;
+    if (!paymentId || (notification.type && notification.type !== "payment")) {
+      return json({ ok: true });
+    }
+    const paymentResponse = await mercadoPagoRequest(`/v1/payments/${encodeURIComponent(String(paymentId))}`);
+    if (!paymentResponse.ok) return json({ ok: true });
+    const payment = await paymentResponse.json() as {
+      external_reference?: string;
+      status?: string;
+      payment_type_id?: string;
+      transaction_amount?: number;
+    };
+    if (!payment.external_reference || !payment.status) return json({ ok: true });
+    const db = await ensureDatabase();
+    const order = await db.prepare("SELECT total FROM bella_orders WHERE id = ?")
+      .bind(payment.external_reference).first<{ total: number }>();
+    if (!order || Math.abs(Number(order.total) - Number(payment.transaction_amount)) > 0.01) {
+      return json({ ok: true });
+    }
+    const method = payment.payment_type_id === "bank_transfer"
+      ? "Mercado Pago - PIX"
+      : "Mercado Pago - Cartão";
+    await db.prepare(`
+      UPDATE bella_orders
+      SET status = ?, payment_method = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(paymentOrderStatus(payment.status), method, payment.external_reference).run();
+    return json({ ok: true });
   }
 
   if (path !== "admin/login") return json({ error: "Rota não encontrada" }, 404);
