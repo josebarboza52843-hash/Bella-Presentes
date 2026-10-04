@@ -1,0 +1,19 @@
+.order-card > footer .mercado-pago-action {
+  background: #168eda;
+}
+
+.order-card > footer button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.payment-ready {
+  background: #eef8ff;
+  border-color: #77bce7;
+  border-style: solid;
+}
+
+.payment-ready > small {
+  background: #168eda;
+  color: #fff !important;
+}

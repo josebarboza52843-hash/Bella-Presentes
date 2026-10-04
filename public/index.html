@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&family=Sacramento&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect rx='16' width='64' height='64' fill='%23d85f86'/%3E%3Cpath d='M32 49S13 38 13 23c0-10 13-14 19-5 6-9 19-5 19 5 0 15-19 26-19 26z' fill='%23f7d98b'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="mercadopago.css">
 </head>
 <body>
   <div class="topbar">
@@ -160,7 +161,7 @@
         <label class="wide">Mensagem após o pagamento<textarea id="pixMessage" rows="3" placeholder="Olá! Realizei o pagamento via PIX e gostaria de confirmar meu pedido."></textarea></label>
         <button type="submit">Salvar configuração do PIX</button>
       </form>
-      <div class="future-card"><span>💳</span><div><strong>Pagamento por cartão</strong><p>Área reservada para ativação futura do link de pagamento.</p></div><small>EM BREVE</small></div>
+      <div class="future-card payment-ready"><span>💳</span><div><strong>PIX e cartão pelo Mercado Pago</strong><p>Após confirmar e salvar o frete, gere a cobrança no painel de pedidos e envie o link ao cliente pelo WhatsApp.</p></div><small>PREPARADO</small></div>
     </section>
   </dialog>
   <dialog class="pix-dialog" id="pixDialog">
@@ -206,7 +207,7 @@
   </dialog>
   <dialog class="admin-dialog integrations-dialog" id="integrationsDialog">
     <form method="dialog" class="admin-head"><div><small>CONEXÕES</small><h2>Integrações futuras</h2></div><button aria-label="Fechar">×</button></form>
-    <section class="integrations-list"><article><span>💳</span><div><h3>Mercado Pago</h3><p>Checkout para cartão, PIX e confirmação automática.</p><small>AGUARDANDO CREDENCIAIS</small></div></article><article><span>🚚</span><div><h3>Melhor Envio</h3><p>Cotação automática com peso, dimensões e CEP.</p><small>AGUARDANDO CREDENCIAIS</small></div></article><p class="credentials-note">As credenciais serão armazenadas de forma protegida no servidor e nunca no navegador ou no arquivo ZIP.</p></section>
+    <section class="integrations-list"><article><span>💳</span><div><h3>Mercado Pago</h3><p>Checkout preparado para PIX, cartão e confirmação automática do pagamento.</p><small>PRONTO PARA CONECTAR</small></div></article><article><span>🚚</span><div><h3>Melhor Envio</h3><p>Cotação automática com peso, dimensões e CEP.</p><small>AGUARDANDO CREDENCIAIS</small></div></article><p class="credentials-note">As credenciais serão armazenadas de forma protegida no servidor e nunca no navegador ou no arquivo ZIP.</p></section>
   </dialog>
   <dialog class="pix-dialog" id="orderPixDialog"><form method="dialog" class="pix-dialog-head"><div><small>COBRANÇA</small><h2>PIX do pedido</h2></div><button aria-label="Fechar">×</button></form><div class="pix-dialog-body"><img class="pix-qr" id="orderPixQr" alt="QR Code PIX"><div class="pix-total"><span>Total</span><strong id="orderPixTotal">R$ 0,00</strong></div><label>PIX copia e cola<textarea id="orderPixPayload" readonly rows="5"></textarea></label><button type="button" class="copy-pix" id="copyOrderPix">Copiar código PIX</button><a class="primary-btn whatsapp-order" id="sendOrderPix" target="_blank" rel="noopener">Enviar cobrança pelo WhatsApp</a></div></dialog>
   <script src="app.js"></script>
